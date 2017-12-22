@@ -39,7 +39,7 @@ static void build_data_image()
     MMFileData mfile(image_file, image_maxsize);
     RootTable* table = mfile.LoadRootWriteObject<RootTable>();
     CharAllocator& alloc = mfile.GetAllocator();
-    for (size_t i = 0; i < 1; i++)
+    for (size_t i = 0; i < 12345; i++)
     {
         SHMString key;
         char tmp[100];

@@ -204,7 +204,6 @@ namespace mmdata
                     free(p);
                     return;
                 }
-                printf("###free %p\n", ptr);
                 mspace_free((char*) (meta) + meta->mspace_offset, p);
             }
             inline void deallocate(const pointer &ptr, size_type n = 1)
