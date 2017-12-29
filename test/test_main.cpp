@@ -28,8 +28,15 @@
  */
 #include <stdio.h>
 #include "mmdata.hpp"
+#include "mmdata_util.hpp"
 
 using namespace mmdata;
+
+struct TestStruct{
+        int k;
+        SHMString str;
+        TestStruct(CharAllocator& alloc):k(0),str(alloc){}
+};
 
 struct ValueObject
 {
@@ -51,9 +58,9 @@ static void build_data_image()
     MMFileData mfile(image_file, image_maxsize);
     RootTable* table = mfile.LoadRootWriteObject<RootTable>();
     CharAllocator& alloc = mfile.GetAllocator();
-    for (size_t i = 0; i < 1; i++)
+    for (size_t i = 0; i < 12345; i++)
     {
-        SHMString key;
+        SHMString key(table->get_allocator());
         char tmp[100];
         sprintf(tmp, "key%d", i);
         key.assign(tmp);
@@ -67,6 +74,18 @@ static void build_data_image()
         v.v3.push_back(i + 2);
         table->insert(RootTable::value_type(key, v));
     }
+
+
+    {
+        SHMVector<ValueObject>::Type tv(alloc);
+        tv.resize(1);
+        tv[0].v0.assign("gadasda");
+    }
+
+    TestStruct* t = mfile.NewNamingObject<TestStruct>("test");
+    t->k = 12345;
+    t->str.assign("hello,world");
+
     int64_t n = mfile.ShrinkWriteFile();
     printf("Build data image file with size:%lld\n", n);
 }
@@ -84,12 +103,37 @@ static void load_data_image()
         printf("FoundEntry: key:%s v0:%s v1:%lld  v3:[%d %d %d]\n", key.c_str(), value.v0.c_str(), value.v1, value.v3[0], value.v3[1],
                 value.v3[2]);
     }
+    TestStruct* t = mfile.GetNamingObject<TestStruct>("test");
+    printf("TestStruct: k=%d, str=%s\n", t->k, t->str.c_str());
 }
+
+struct WhiteListData
+{
+    typedef mmdata::SHMString key_type;
+    typedef mmdata::SHMVector<int32_t>::Type value_type;
+    typedef mmdata::SHMHashMap<key_type, value_type>::Type table_type;
+    key_type imei;
+    value_type items;
+
+    KCFG_DEFINE_FIELDS(imei,items)
+
+    WhiteListData(const mmdata::CharAllocator& alloc):imei(alloc),items(alloc)
+    {}
+
+    const key_type& GetKey() const { return imei; }
+    const value_type& GetValue() const { return items; }
+};
+
 
 int main()
 {
     build_data_image();
 
     load_data_image();
+
+    DataImageBuilder builder;
+    DataImageBuildOptions options;
+    builder.Build<WhiteListData>(options);
+
     return 0;
 }

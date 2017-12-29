@@ -31,10 +31,10 @@
 #define SRC_COMMON_TYPES_HPP_
 #include <boost/interprocess/offset_ptr.hpp>
 #include <boost/interprocess/containers/deque.hpp>
+#include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/list.hpp>
 #include <boost/interprocess/containers/string.hpp>
-#include <boost/container/scoped_allocator.hpp>
 #include <boost/unordered_map.hpp>
 #include "allocator.hpp"
 
@@ -56,14 +56,24 @@ namespace mmdata
             typedef boost::interprocess::deque<T, Allocator<T> > Type;
     };
 
-    template<typename KeyType, typename MappedType>
+    template<typename KeyType, typename MappedType, typename Hash = boost::hash<KeyType>, typename Equal = std::equal_to<KeyType> >
     struct SHMHashMap
     {
-            typedef std::pair<const int, float> ValueType;
+            typedef std::pair<const KeyType, MappedType> ValueType;
             typedef Allocator<ValueType> ShmemAllocator;
-            typedef boost::unordered_map<KeyType, MappedType, boost::hash<KeyType>, std::equal_to<KeyType>,
+            typedef boost::unordered_map<KeyType, MappedType, Hash, Equal,
                     ShmemAllocator> Type;
     };
+
+    template<typename KeyType, typename MappedType, typename Less = std::less<KeyType> >
+    struct SHMMap
+    {
+            typedef std::pair<const KeyType, MappedType> ValueType;
+            typedef Allocator<ValueType> ShmemAllocator;
+            typedef boost::interprocess::map<KeyType, MappedType, Less, ShmemAllocator> Type;
+    };
+
+    typedef SHMHashMap<SHMString, VoidPtr>::Type NamingTable;
 }
 
 #endif /* SRC_COMMON_TYPES_HPP_ */

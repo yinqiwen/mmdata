@@ -65,6 +65,7 @@ namespace mmdata
         MemorySpaceInfo mspace_info;
         mspace_info.space = buf;
         allocator_ = Allocator<char>(mspace_info);
+        ::new ((void*) (meta->naming_table)) NamingTable(allocator_);
         return 0;
     }
 

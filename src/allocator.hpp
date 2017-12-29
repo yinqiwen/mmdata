@@ -41,10 +41,11 @@
 #include <limits.h>
 #include <stdint.h>
 
-//1M Meta size
-#define ALLOCATOR_META_SIZE 1048576
-//max root struct size 128KB
-#define MAX_ROOT_STRUCT_SIZE 131072
+//4KB Meta size
+#define ALLOCATOR_META_SIZE 4096
+//max root struct size 1KB
+#define MAX_ROOT_STRUCT_SIZE 1024
+#define MAX_NAMING_TABLE_SIZE 256
 
 extern "C"
 {
@@ -64,6 +65,7 @@ namespace mmdata
             size_t mspace_offset;
 
             char root_object[MAX_ROOT_STRUCT_SIZE];
+            char naming_table[MAX_NAMING_TABLE_SIZE];
             Meta()
                     : size(0), mspace_offset(1)
             {
@@ -235,6 +237,11 @@ namespace mmdata
             //!allocate, allocation_command and allocate_many.
             size_type size(const pointer &p) const
             {
+                Meta* meta = (Meta*) (m_space.space.get());
+                if (NULL == meta)
+                {
+                    return UINT32_MAX;
+                }
                 return (size_type) mspace_usable_size(p.get()) / sizeof(T);
             }
 

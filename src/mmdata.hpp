@@ -39,17 +39,25 @@ namespace mmdata
     class MMData
     {
         protected:
+            Meta* meta_;
             CharAllocator allocator_;
             std::string err;
-            int CreateAllocator(void* buf, int64_t memsize);
+
             template<typename T>
             T* LoadRootObject(const void* buf)
             {
-                Meta* meta = (Meta*) buf;
-                return (T*) (meta->root_object);
+                meta_ = (Meta*)buf;
+                //Meta* meta = (Meta*) buf;
+                return (T*) (meta_->root_object);
+            }
+            NamingTable* GetNamingTable()
+            {
+                //Meta* meta = (Meta*) allocator_.get_space().space.get();
+                return (NamingTable*) (meta_->naming_table);
             }
         public:
             MMData();
+            int CreateAllocator(void* buf, int64_t memsize);
             const std::string& GetLastErr() const
             {
                 return err;
@@ -58,6 +66,71 @@ namespace mmdata
             {
                 return allocator_;
             }
+            template<typename T>
+            T* New()
+            {
+                Allocator<T> alloc(allocator_);
+                T* v = alloc.allocate(1);
+                ::new ((void*) (v)) T(allocator_);
+                return v;
+            }
+            template<typename T>
+            void Delete(T* p)
+            {
+                Allocator<T> alloc(allocator_);
+                alloc.destroy(p);
+                alloc.deallocate(p);
+            }
+
+            template<typename T>
+            T* NewNamingObject(const std::string& str)
+            {
+                if(NULL == meta_)
+                {
+                    return NULL;
+                }
+                SHMString key(str.data(), str.size(), allocator_);
+                VoidPtr nil;
+                std::pair<NamingTable::iterator, bool> ret = GetNamingTable()->insert(NamingTable::value_type(key, nil));
+                if(!ret.second)
+                {
+                    //duplicate
+                    return NULL;
+                }
+                T* v = New<T>();
+                ret.first->second = v;
+                return v;
+            }
+            template<typename T>
+            T* GetNamingObject(const std::string& str)
+            {
+                if(NULL == meta_)
+                {
+                    return NULL;
+                }
+                SHMString key(str.data(), str.size(), allocator_);
+                NamingTable::const_iterator found = GetNamingTable()->find(key);
+                if(found == GetNamingTable()->end())
+                {
+                    return NULL;
+                }
+                return (T*)(found->second.get());
+            }
+            template<typename T>
+            bool DeleteNamingObject(const std::string& str, T* p)
+            {
+                SHMString key(str.data(), str.size(), allocator_);
+                const NamingTable* namings = GetNamingTable();
+                NamingTable::iterator found = namings->find(key);
+                if(found == GetNamingTable()->end())
+                {
+                    return false;
+                }
+                GetNamingTable()->erase(found);
+                Delete<T>(p);
+                return true;
+            }
+
             template<typename T>
             T* LoadRootWriteObject(void* buf, int64_t size)
             {
