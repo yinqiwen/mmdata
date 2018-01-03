@@ -69,7 +69,7 @@ namespace mmdata
         return 0;
     }
 
-    int64_t MMFileData::ShrinkWriteFile()
+    int64_t MMFileData::ShrinkToFit()
     {
         if(readonly_)
         {

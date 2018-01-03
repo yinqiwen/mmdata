@@ -86,7 +86,7 @@ static void build_data_image()
     t->k = 12345;
     t->str.assign("hello,world");
 
-    int64_t n = mfile.ShrinkWriteFile();
+    int64_t n = mfile.ShrinkToFit();
     printf("Build data image file with size:%lld\n", n);
 }
 

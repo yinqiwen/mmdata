@@ -197,7 +197,7 @@ namespace mmdata
                 readonly_ = true;
                 return MMData::LoadRootReadObject<T>(databuf_.buf);
             }
-            int64_t ShrinkWriteFile();
+            int64_t ShrinkToFit();
     };
 }
 

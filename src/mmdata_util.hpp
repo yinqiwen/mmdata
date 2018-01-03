@@ -78,7 +78,7 @@ namespace mmdata
                         table->insert(typename RootTable::value_type(entry.GetKey(), entry.GetValue()));
                     }
                 }
-                mfile.ShrinkWriteFile();
+                mfile.ShrinkToFit();
                 return 0;
             }
     };

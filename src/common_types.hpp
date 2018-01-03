@@ -34,8 +34,10 @@
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/list.hpp>
+#include <boost/interprocess/containers/set.hpp>
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include "allocator.hpp"
 
 namespace mmdata
@@ -56,6 +58,18 @@ namespace mmdata
             typedef boost::interprocess::deque<T, Allocator<T> > Type;
     };
 
+    template<typename T>
+    struct SHMList
+    {
+            typedef boost::interprocess::list<T, Allocator<T> > Type;
+    };
+
+    template<typename T, typename Less= std::less<T> >
+    struct SHMSet
+    {
+            typedef boost::interprocess::set<T, Less, Allocator<T> > Type;
+    };
+
     template<typename KeyType, typename MappedType, typename Hash = boost::hash<KeyType>, typename Equal = std::equal_to<KeyType> >
     struct SHMHashMap
     {
@@ -71,6 +85,12 @@ namespace mmdata
             typedef std::pair<const KeyType, MappedType> ValueType;
             typedef Allocator<ValueType> ShmemAllocator;
             typedef boost::interprocess::map<KeyType, MappedType, Less, ShmemAllocator> Type;
+    };
+
+    template<typename KeyType, typename Hash = boost::hash<KeyType>, typename Equal = std::equal_to<KeyType> >
+    struct SHMHashSet
+    {
+            typedef boost::unordered_set<KeyType, Hash, Equal, Allocator<KeyType> > Type;
     };
 
     typedef SHMHashMap<SHMString, VoidPtr>::Type NamingTable;
