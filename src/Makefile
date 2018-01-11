@@ -34,8 +34,6 @@
 CXX=g++
 CC=gcc
 
-MMKV_VERSION=0.1.0
-
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 LIB_PATH=$(PWD)/../deps
@@ -45,12 +43,12 @@ DIST_PATH=$(PWD)/../dist
 OPTIMIZATION?=-O0
 OPT=$(OPTIMIZATION)
 
-CXXFLAGS=-Wall -g ${OPT} -fPIC -D__STDC_FORMAT_MACROS -DMMKV_VERSION='"${MMKV_VERSION}"'
-CCFLAGS=-Wall -std=gnu99 ${OPT} -fPIC -pedantic -g -D__STDC_FORMAT_MACROS -DMMKV_VERSION='"${MMKV_VERSION}"'
+CXXFLAGS=-Wall -g ${OPT} -fPIC -D__STDC_FORMAT_MACROS 
+CCFLAGS=-Wall -std=gnu99 ${OPT} -fPIC -pedantic -g -D__STDC_FORMAT_MACROS 
 LDFLAGS=-g 
 
 BOOST_INC?=/usr/include
-INCS=-I./ -I${LIB_PATH} -I${LZ4_PATH} -I${SPARSEHASH_PATH}/src/ -I${BOOST_INC}  
+INCS=-I./ -I${LIB_PATH}  -I${BOOST_INC} -I../../kcfg
 
 LIBS=  -lpthread
 
@@ -61,15 +59,15 @@ LIBS=  -lpthread
 	${CC} -c ${CCFLAGS} ${INCS} $< -o $@
 
 
-COMMON_OBJECTS := mmap.o mmdata.o  malloc.o 
+COMMON_OBJECTS := mmap.o mmdata.o malloc.o mmdata_util.o
 
-TESTOBJ :=  ../test/test_main.o
+TESTOBJ :=  ../test/test_main.o 
 
 #DIST_LIB = libardb.so
 DIST_LIBA = libmmdata.a
 
 
-all: test_boost $(DIST_LIB) test 
+all: test_boost $(DIST_LIBA) test 
 
 $(DIST_LIB): $(COMMON_OBJECTS)
 	${CXX} -shared -o $@ $^
@@ -99,10 +97,9 @@ test:  lib ${TESTOBJ}
 	${CXX} -o mmdata-test  ${TESTOBJ} $(DIST_LIBA) ${LIBS}
 	
 clean_test:
-	rm -f  ${TESTOBJ} mmdata-test
+	rm -f  ${TESTOBJ} ${TESTOBJ1} mmdata-test
 	
 clean:
-	rm -f  ${COMMON_OBJECTS} ${TESTOBJ} $(DIST_LIBA) mmdata-test
-
+	rm -f  ${COMMON_OBJECTS} ${TESTOBJ} $(DIST_LIBA) mmdata-test 
 	
 

@@ -39,15 +39,15 @@ namespace mmdata
             std::string err_msg;
             int Init(const std::string& path, uint64_t size, bool readonly, bool reate_if_notexist);
         public:
-
             char* buf;
             uint64_t size;
             bool atuoclose;
         public:
-            MMapBuf(bool aclose = true) : buf(0), size(0),atuoclose(aclose)
+            MMapBuf(bool aclose = true)
+                    : buf(0), size(0), atuoclose(aclose)
             {
             }
-            const std::string& GetLastErr()const
+            const std::string& GetLastErr() const
             {
                 return err_msg;
             }

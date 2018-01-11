@@ -30,9 +30,8 @@
 #ifndef SRC_MMDATA_UTIL_HPP_
 #define SRC_MMDATA_UTIL_HPP_
 
-
-#include "mmdata_kcfg.hpp"
 #include "kcfg.hpp"
+#include "mmdata_kcfg.hpp"
 #include "mmdata.hpp"
 #include <fstream>
 
@@ -43,8 +42,10 @@ namespace mmdata
             int64_t max_image_size;
             std::string src_file;
             std::string dst_file;
+            void* dst_buf;
+            size_t dst_buf_size;
             DataImageBuildOptions()
-                    : max_image_size(10 * 1024 * 1024 * 1024LL)
+                    : max_image_size(10 * 1024 * 1024 * 1024LL), dst_buf(NULL), dst_buf_size(0)
             {
             }
     };
@@ -53,7 +54,7 @@ namespace mmdata
     {
             std::string err;
             template<typename T>
-            int Build(const DataImageBuildOptions& options)
+            int64_t Build(const DataImageBuildOptions& options)
             {
                 std::ifstream file(options.src_file.c_str());
                 if (!file.is_open())
@@ -61,10 +62,26 @@ namespace mmdata
                     err = "Open source file failed.";
                     return -1;
                 }
+                if (NULL == options.dst_buf && options.dst_file.empty())
+                {
+                    err = "No dst file or buf specified.";
+                    return -1;
+                }
                 typedef typename T::table_type RootTable;
+                RootTable* table = NULL;
+                CharAllocator* alloc = NULL;
+                MMData mdata;
                 MMFileData mfile(options.dst_file, options.max_image_size);
-                RootTable* table = mfile.LoadRootWriteObject<RootTable>();
-                CharAllocator& alloc = mfile.GetAllocator();
+                if (!options.dst_file.empty())
+                {
+                    table = mfile.LoadRootWriteObject<RootTable>();
+                    alloc = &(mfile.GetAllocator());
+                }
+                else
+                {
+                    table = mdata.LoadRootWriteObject<RootTable>(options.dst_buf, options.dst_buf_size);
+                    alloc = &(mdata.GetAllocator());
+                }
                 std::string line;
                 while (std::getline(file, line))
                 {
@@ -72,30 +89,33 @@ namespace mmdata
                     {
                         continue;
                     }
-                    T entry(alloc);
-                    if(kcfg::ParseFromJsonString(line, entry))
+                    T entry(*alloc);
+                    if (kcfg::ParseFromJsonString(line, entry))
                     {
                         table->insert(typename RootTable::value_type(entry.GetKey(), entry.GetValue()));
                     }
                 }
-                mfile.ShrinkToFit();
-                return 0;
+                if (!options.dst_file.empty())
+                {
+                    return mfile.ShrinkToFit();
+                }
+                return alloc->used_space();
             }
     };
 
     template<typename Container>
     int WriteListToJson(const Container& v, const std::string& file, bool append = true)
     {
-        FILE* f = fopen(file.c_str(), append?"a+":"w+");
-        if(NULL == f)
+        FILE* f = fopen(file.c_str(), append ? "a+" : "w+");
+        if (NULL == f)
         {
             return -1;
         }
         typename Container::const_iterator it = v.begin();
-        while(it != v.end())
+        while (it != v.end())
         {
             std::string json;
-            kcfg::WriteToJsonString(*it,json);
+            kcfg::WriteToJsonString(*it, json);
             fprintf(f, "%s\n", json.c_str());
             it++;
         }
@@ -103,7 +123,16 @@ namespace mmdata
         return 0;
     }
 
+    typedef int64_t DataImageBuildFunc(mmdata::DataImageBuildOptions& options, uint64_t& hash, std::string& err);
+    typedef int TestMemoryFunc(const void* mem, const std::string& json_key);
+    struct HelperFuncRegister
+    {
+            HelperFuncRegister(const char* name, DataImageBuildFunc* func, TestMemoryFunc* test, uint64_t struct_hash);
+    };
 
+    DataImageBuildFunc* GetBuildFuncByName(const std::string& name);
+    TestMemoryFunc* GetTestFuncByName(const std::string& name);
+    uint64_t GetRootStructHash(const std::string& nam);
 
 }
 

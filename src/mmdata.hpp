@@ -33,9 +33,19 @@
 #include "mmap.hpp"
 #include "allocator.hpp"
 #include <new>
+#include <iosfwd>
 
 namespace mmdata
 {
+
+//    template<typename T>
+//    void* MMDataTypeCreator(const CharAllocator& alloc)
+//    {
+//        if (NULL != obj)
+//        {
+//            delete obj;
+//        }
+//    }
     class MMData
     {
         protected:
@@ -199,6 +209,34 @@ namespace mmdata
             }
             int64_t ShrinkToFit();
     };
+
+
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream& out, const typename boost::container::vector<T, mmdata::Allocator<T> >& v)
+    {
+        out << '[';
+        if (!v.empty())
+        {
+            std::copy(v.begin(), v.end(), std::ostream_iterator<T>(out, ", "));
+        }
+        out << "]";
+        return out;
+    }
+
+    template<typename K, typename V>
+    std::ostream& operator<<(std::ostream& out, const boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
+    {
+        out << '{';
+        typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it = v.begin();
+        while(it != v.end())
+        {
+            out << it->first << "->" << it->second << ",";
+            it++;
+        }
+        out << "}";
+        return out;
+    }
 }
 
 #endif /* SRC_MMDATA_HPP_ */

@@ -44,7 +44,7 @@ namespace mmdata
         }
         return size;
     }
-    MMData::MMData()
+    MMData::MMData():meta_(NULL)
     {
 
     }
