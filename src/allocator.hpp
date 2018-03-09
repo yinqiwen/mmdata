@@ -259,13 +259,9 @@ namespace mmdata
                 return &value;
             }
 
-            //!Constructs an object
-            //!Throws if T's constructor throws
-            //!For backwards compatibility with libraries using C++03 allocators
-            template<class P>
-            void construct(const pointer &ptr, const P& p)
+            void construct(const pointer &ptr, const_reference val)
             {
-                ::new ((void*) (ptr.get())) P(p);
+                ::new ((void*) (ptr.get())) T(val);
             }
 
             //!Destroys object. Throws if object's

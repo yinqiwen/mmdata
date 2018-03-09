@@ -56,7 +56,7 @@ namespace mmdata
             template<typename T>
             T* LoadRootObject(const void* buf)
             {
-                meta_ = (Meta*)buf;
+                meta_ = (Meta*) buf;
                 //Meta* meta = (Meta*) buf;
                 return (T*) (meta_->root_object);
             }
@@ -95,14 +95,15 @@ namespace mmdata
             template<typename T>
             T* NewNamingObject(const std::string& str)
             {
-                if(NULL == meta_)
+                if (NULL == meta_)
                 {
                     return NULL;
                 }
                 SHMString key(str.data(), str.size(), allocator_);
                 VoidPtr nil;
-                std::pair<NamingTable::iterator, bool> ret = GetNamingTable()->insert(NamingTable::value_type(key, nil));
-                if(!ret.second)
+                std::pair<NamingTable::iterator, bool> ret = GetNamingTable()->insert(
+                        NamingTable::value_type(key, nil));
+                if (!ret.second)
                 {
                     //duplicate
                     return NULL;
@@ -114,17 +115,17 @@ namespace mmdata
             template<typename T>
             T* GetNamingObject(const std::string& str)
             {
-                if(NULL == meta_)
+                if (NULL == meta_)
                 {
                     return NULL;
                 }
                 SHMString key(str.data(), str.size(), allocator_);
                 NamingTable::const_iterator found = GetNamingTable()->find(key);
-                if(found == GetNamingTable()->end())
+                if (found == GetNamingTable()->end())
                 {
                     return NULL;
                 }
-                return (T*)(found->second.get());
+                return (T*) (found->second.get());
             }
             template<typename T>
             bool DeleteNamingObject(const std::string& str, T* p)
@@ -132,7 +133,7 @@ namespace mmdata
                 SHMString key(str.data(), str.size(), allocator_);
                 const NamingTable* namings = GetNamingTable();
                 NamingTable::iterator found = namings->find(key);
-                if(found == GetNamingTable()->end())
+                if (found == GetNamingTable()->end())
                 {
                     return false;
                 }
@@ -210,8 +211,6 @@ namespace mmdata
             int64_t ShrinkToFit();
     };
 
-
-
     template<typename T>
     std::ostream& operator<<(std::ostream& out, const typename boost::container::vector<T, mmdata::Allocator<T> >& v)
     {
@@ -225,11 +224,13 @@ namespace mmdata
     }
 
     template<typename K, typename V>
-    std::ostream& operator<<(std::ostream& out, const boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
+    std::ostream& operator<<(std::ostream& out,
+            const boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
     {
         out << '{';
-        typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it = v.begin();
-        while(it != v.end())
+        typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it =
+                v.begin();
+        while (it != v.end())
         {
             out << it->first << "->" << it->second << ",";
             it++;
