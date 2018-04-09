@@ -37,15 +37,6 @@
 
 namespace mmdata
 {
-
-//    template<typename T>
-//    void* MMDataTypeCreator(const CharAllocator& alloc)
-//    {
-//        if (NULL != obj)
-//        {
-//            delete obj;
-//        }
-//    }
     class MMData
     {
         protected:
@@ -68,6 +59,19 @@ namespace mmdata
         public:
             MMData();
             int CreateAllocator(void* buf, int64_t memsize);
+            int OpenWrite(void* buf, int64_t size)
+            {
+                if (0 != CreateAllocator(buf, size))
+                {
+                    return -1;
+                }
+                return 0;
+            }
+            int OpenRead(const void* buf)
+            {
+                meta_ = (Meta*)buf;
+                return 0;
+            }
             const std::string& GetLastErr() const
             {
                 return err;
@@ -76,6 +80,7 @@ namespace mmdata
             {
                 return allocator_;
             }
+
             template<typename T>
             T* New()
             {
@@ -145,7 +150,7 @@ namespace mmdata
             template<typename T>
             T* LoadRootWriteObject(void* buf, int64_t size)
             {
-                if (0 != CreateAllocator(buf, size))
+                if (0 != OpenWrite(buf, size))
                 {
                     return NULL;
                 }
@@ -159,6 +164,18 @@ namespace mmdata
             {
                 return (const T*) LoadRootObject<T>(mem);
             }
+            template<typename T>
+            T* GetRootWriteObject()
+            {
+                return (T*) (meta_->root_object);
+            }
+
+            template<typename T>
+            const T* GetRootReadObject(const void* mem)
+            {
+                return (const T*) (meta_->root_object);
+            }
+
     };
 
     class MMFileData: public MMData
@@ -229,6 +246,21 @@ namespace mmdata
     {
         out << '{';
         typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it =
+                v.begin();
+        while (it != v.end())
+        {
+            out << it->first << "->" << it->second << ",";
+            it++;
+        }
+        out << "}";
+        return out;
+    }
+    template<typename K, typename V>
+    std::ostream& operator<<(std::ostream& out,
+            const boost::container::map<K, V,std::less<K>,mmdata::Allocator<std::pair<const K, V> > >& v)
+    {
+        out << '{';
+        typename boost::container::map<K, V,std::less<K>,mmdata::Allocator<std::pair<const K, V> > >::const_iterator it =
                 v.begin();
         while (it != v.end())
         {

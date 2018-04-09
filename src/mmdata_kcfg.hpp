@@ -35,110 +35,7 @@
 
 namespace kcfg
 {
-    template<typename T>
-    struct SHMConstructor
-    {
-            T value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(alloc)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<float>
-    {
-            float value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<double>
-    {
-            double value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
 
-    template<>
-    struct SHMConstructor<int8_t>
-    {
-            int8_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint8_t>
-    {
-            uint8_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<int16_t>
-    {
-            int16_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint16_t>
-    {
-            uint16_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint32_t>
-    {
-            uint32_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<int32_t>
-    {
-            int32_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<int64_t>
-    {
-            int64_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint64_t>
-    {
-            uint64_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-
-    /*
-     * the
-     */
     const rapidjson::Value* getJsonFiledValue(const rapidjson::Value& json, const char* name);
     void addJsonMember(rapidjson::Value& json, rapidjson::Value::AllocatorType& allocator, const char* name,
             rapidjson::Value& json_value);
@@ -162,8 +59,8 @@ namespace kcfg
         rapidjson::Value::ConstMemberIterator it = val->MemberBegin();
         while (it != val->MemberEnd())
         {
-            SHMConstructor<V> value(v.get_allocator());
-            SHMConstructor<K> key(v.get_allocator());
+            mmdata::SHMConstructor<V> value(v.get_allocator());
+            mmdata::SHMConstructor<K> key(v.get_allocator());
             try
             {
                 key.value = boost::lexical_cast<K>(it->name.GetString(), it->name.GetStringLength());
@@ -220,7 +117,7 @@ namespace kcfg
         rapidjson::Value::ConstMemberIterator it = val->MemberBegin();
         while (it != val->MemberEnd())
         {
-            SHMConstructor<V> value(v.get_allocator());
+            mmdata::SHMConstructor<V> value(v.get_allocator());
             mmdata::SHMString key(v.get_allocator());
             key.assign(it->name.GetString(), it->name.GetStringLength());
             if (Parse(it->value, "", value.value))
@@ -252,7 +149,7 @@ namespace kcfg
         }
         for (rapidjson::Value::ConstValueIterator ait = val->Begin(); ait != val->End(); ++ait)
         {
-            SHMConstructor<T> value(v.get_allocator());
+            mmdata::SHMConstructor<T> value(v.get_allocator());
             if (Parse(*ait, "", value.value))
             {
                 v.push_back(value.value);
