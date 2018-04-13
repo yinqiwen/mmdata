@@ -217,13 +217,13 @@ namespace mmdata
             bool DeleteNamingObject(const std::string& str, T* p)
             {
                 SHMString key(str.data(), str.size(), allocator_);
-                const NamingTable* namings = GetNamingTable();
+                NamingTable* namings = GetNamingTable();
                 NamingTable::iterator found = namings->find(key);
                 if (found == GetNamingTable()->end())
                 {
                     return false;
                 }
-                GetNamingTable()->erase(found);
+                namings->erase(found);
                 Delete<T>(p);
                 return true;
             }
