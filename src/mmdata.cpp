@@ -31,6 +31,9 @@
 #include "malloc-2.8.3.h"
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
+#include <errno.h>
 
 namespace mmdata
 {
@@ -44,40 +47,75 @@ namespace mmdata
         }
         return size;
     }
-    MMData::MMData():meta_(NULL)
+
+    MMData::MMData()
+            : meta_(NULL)
     {
 
     }
-    int MMData::CreateAllocator(void* buf, int64_t memsize)
+    int MMData::CreateMeta(void* buf, int64_t memsize, bool create_allocator)
     {
-        if (memsize < ALLOCATOR_META_SIZE * 2)
+        printf("####CreateMeta %d %d\n", memsize, create_allocator);
+        if (create_allocator && memsize > 0 && memsize < ALLOCATOR_META_SIZE * 2)
         {
             err = "Too small mem size to create allocator.";
             return -1;
         }
-        Meta* meta = (Meta*) buf;
-        memset(meta, 0, sizeof(Meta));
-        meta->size = memsize - ALLOCATOR_META_SIZE;
-        meta->size = allign_page(meta->size);
-        void* mspace_buf = (char*) meta + ALLOCATOR_META_SIZE;
-        void* mspace = create_mspace_with_base(mspace_buf, meta->size, 0, true);
-        meta->mspace_offset = (char*) mspace - (char*) buf;
-        MemorySpaceInfo mspace_info;
-        mspace_info.space = buf;
-        allocator_ = Allocator<char>(mspace_info);
-        ::new ((void*) (meta->naming_table)) NamingTable(allocator_);
-        meta_ = meta;
+        meta_ = (Meta*) buf;
+        if (memsize > 0)
+        {
+            Meta* meta = (Meta*) buf;
+            memset(meta, 0, sizeof(Meta));
+            if(create_allocator)
+            {
+                meta->size = memsize - ALLOCATOR_META_SIZE;
+                meta->size = allign_page(meta->size);
+                void* mspace_buf = (char*) meta + ALLOCATOR_META_SIZE;
+                void* mspace = create_mspace_with_base(mspace_buf, meta->size, 0, true);
+                meta->mspace_offset = (char*) mspace - (char*) buf;
+            }
+
+        }
+        if (create_allocator)
+        {
+            MemorySpaceInfo mspace_info;
+            mspace_info.space = buf;
+            allocator_ = Allocator<char>(mspace_info);
+        }
+        if (memsize > 0)
+        {
+            ::new ((void*) (meta_->naming_table)) NamingTable(allocator_);
+        }
         return 0;
+    }
+    TypeRefItemPtr MMData::NewTypeRefItem(const std::string& type, SHMItemConstructor* cons, SHMItemDestructor* destroy,
+            uint32_t ref)
+    {
+        TypeRefItemPtr ptr = New<TypeRefItem>();
+        ptr->destroy = destroy;
+        ptr->val = cons(*this);
+        ptr->ref = ref;
+        ptr->type.assign(type.c_str(), type.size());
+        return ptr;
+    }
+    void MMData::Delete(TypeRefItemPtr p)
+    {
+        if (NULL == p.get() || NULL == p->val.get())
+        {
+            return;
+        }
+        p->destroy(*this, p->val.get());
+        Delete(p.get());
     }
 
     int64_t MMFileData::ShrinkToFit()
     {
-        if(readonly_)
+        if (readonly_)
         {
             err = "MMFileData is in readonly mode.";
             return -1;
         }
-        if(databuf_.buf == NULL)
+        if (databuf_.buf == NULL)
         {
             err = "MMFileData is not opened.";
             return -1;
@@ -87,6 +125,79 @@ namespace mmdata
         databuf_.Close();
         truncate(file_.c_str(), used_space);
         return used_space;
+    }
+
+    ShmData::ShmData(bool auto_dettach)
+            : shmid(-1), shm_buf(NULL), dettach(auto_dettach)
+    {
+
+    }
+
+    int ShmData::OpenShm(const std::string& f, const ShmOpenOptions& options)
+    {
+        key_t shm_key = ftok(f.c_str(), 0);
+        if (shm_key == -1)
+        {
+            int err = errno;
+            error_reason.append("'ftok' error:").append(strerror(err));
+            return -1;
+        }
+        printf("####Open %d %d\n", options.readonly, options.recreate);
+        shmid = shmget(shm_key, 0, 0);
+        if (!options.readonly)
+        {
+            if (shmid != -1 && options.recreate)
+            {
+                shmctl(shmid, IPC_RMID, NULL);
+                shmid = -1;
+            }
+            if(shmid == -1)
+            {
+                shmid = shmget(shm_key, options.size, IPC_CREAT | IPC_EXCL | 0666);
+            }
+        }
+        if (shmid == -1)
+        {
+            int err = errno;
+            error_reason.append("'shmget' error:").append(strerror(err));
+            return -1;
+        }
+        shm_buf = shmat(shmid, NULL, 0);
+        if (shm_buf == (void*) -1)
+        {
+            int err = errno;
+            error_reason.append("'shmat' error:").append(strerror(err));
+            return -1;
+        }
+        if (options.readonly)
+        {
+            return OpenRead(shm_buf);
+        }
+        return OpenWrite(shm_buf, options.recreate ? options.size : 0);
+    }
+    ShmData::~ShmData()
+    {
+        if (dettach)
+        {
+            shmdt(shm_buf);
+        }
+    }
+
+    HeapMMData::HeapMMData()
+
+    {
+        memset(meta_buf, 0, sizeof(Meta) );
+    }
+    int HeapMMData::OpenWrite()
+    {
+        return MMData::OpenWrite(meta_buf, sizeof(Meta)*2, false);
+    }
+    int HeapMMData::OpenRead()
+    {
+        return MMData::OpenRead(meta_buf);
+    }
+    HeapMMData::~HeapMMData()
+    {
     }
 }
 
