@@ -53,9 +53,9 @@ namespace mmdata
     {
 
     }
-    int MMData::CreateMeta(void* buf, int64_t memsize, bool create_allocator)
+    int MMData::CreateMeta(void* buf, int64_t memsize, bool create_allocator,bool reinit)
     {
-        printf("####CreateMeta %d %d\n", memsize, create_allocator);
+        printf("####[%d]CreateMeta %d %d %d\n",getpid(),  memsize, create_allocator,reinit);
         if (create_allocator && memsize > 0 && memsize < ALLOCATOR_META_SIZE * 2)
         {
             err = "Too small mem size to create allocator.";
@@ -65,13 +65,16 @@ namespace mmdata
         if (memsize > 0)
         {
             Meta* meta = (Meta*) buf;
-            memset(meta, 0, sizeof(Meta));
-            if(create_allocator)
+            if(create_allocator && reinit)
             {
+            	memset(meta, 0, sizeof(Meta));
                 meta->size = memsize - ALLOCATOR_META_SIZE;
                 meta->size = allign_page(meta->size);
-                void* mspace_buf = (char*) meta + ALLOCATOR_META_SIZE;
-                void* mspace = create_mspace_with_base(mspace_buf, meta->size, 0, true);
+            }
+            void* mspace_buf = (char*) meta + ALLOCATOR_META_SIZE;
+            void* mspace = create_mspace_with_base(mspace_buf, meta->size, 0, true);
+            if(reinit)
+            {
                 meta->mspace_offset = (char*) mspace - (char*) buf;
             }
 
@@ -82,7 +85,7 @@ namespace mmdata
             mspace_info.space = buf;
             allocator_ = Allocator<char>(mspace_info);
         }
-        if (memsize > 0)
+        if (memsize > 0 && reinit)
         {
             ::new ((void*) (meta_->naming_table)) NamingTable(allocator_);
         }
@@ -142,7 +145,7 @@ namespace mmdata
             error_reason.append("'ftok' error:").append(strerror(err));
             return -1;
         }
-        printf("####Open %d %d\n", options.readonly, options.recreate);
+        printf("####[%d]Open %d %d %d\n", getpid(), options.readonly, options.recreate, options.reinit);
         shmid = shmget(shm_key, 0, 0);
         if (!options.readonly)
         {
@@ -173,7 +176,7 @@ namespace mmdata
         {
             return OpenRead(shm_buf);
         }
-        return OpenWrite(shm_buf,  options.size);
+        return OpenWrite(shm_buf,  options.size, true, options.reinit);
     }
     ShmData::~ShmData()
     {
