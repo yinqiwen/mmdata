@@ -173,7 +173,7 @@ namespace mmdata
         {
             return OpenRead(shm_buf);
         }
-        return OpenWrite(shm_buf, options.recreate ? options.size : 0);
+        return OpenWrite(shm_buf,  options.size);
     }
     ShmData::~ShmData()
     {
