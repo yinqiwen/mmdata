@@ -96,12 +96,12 @@ namespace mmdata
                 //Meta* meta = (Meta*) allocator_.get_space().space.get();
                 return (NamingTable*) (meta_->naming_table);
             }
-            int CreateMeta(void* buf, int64_t memsize, bool create_allocator);
+            int CreateMeta(void* buf, int64_t memsize, bool create_allocator,bool reinit);
         public:
             MMData();
-            int OpenWrite(void* buf, int64_t size, bool create_allocator= true)
+            int OpenWrite(void* buf, int64_t size, bool create_allocator= true, bool reinit = true)
             {
-                if (NULL == meta_ && 0 != CreateMeta(buf, size, create_allocator))
+                if (NULL == meta_ && 0 != CreateMeta(buf, size, create_allocator,reinit))
                 {
                     return -1;
                 }
@@ -328,7 +328,8 @@ namespace mmdata
             int64_t size;
             bool recreate;
             bool readonly;
-            ShmOpenOptions():size(0),recreate(false),readonly(false)
+            bool reinit;
+            ShmOpenOptions():size(0),recreate(false),readonly(false),reinit(true)
             {
             }
     };
