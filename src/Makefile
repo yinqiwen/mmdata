@@ -62,8 +62,6 @@ LIBS=  -lpthread
 COMMON_OBJECTS := mmap.o mmdata.o malloc.o mmdata_util.o 
 
 TESTOBJ :=  ../test/test_main.o 
-TESTFIFOOBJ1 :=  ../test/test_fifo.o  shm_fifo.o
-TESTFIFOOBJ2 :=  ../test/test_fifo2.o  shm_fifo.o
 
 #DIST_LIB = libardb.so
 DIST_LIBA = libmmdata.a
@@ -95,15 +93,11 @@ test_boost:
 
 lib:  $(DIST_LIBA)
 
-test:  test1 test_fifo1 test_fifo2
+test:  test1
 	
 test1:  lib ${TESTOBJ} 
 	${CXX} -o test1  ${TESTOBJ} $(DIST_LIBA) ${LIBS}
 	
-test_fifo1:  lib ${TESTFIFOOBJ1} 
-	${CXX} -o test_fifo1  ${TESTFIFOOBJ1} $(DIST_LIBA) ${LIBS}
-test_fifo2:  lib ${TESTFIFOOBJ2} 
-	${CXX} -o test_fifo2  ${TESTFIFOOBJ2} $(DIST_LIBA) ${LIBS}
 	
 clean_test:
 	rm -f  ${TESTOBJ} ${TESTOBJ1} ${TESTFIFOOBJ1}  ${TESTFIFOOBJ2} test1 test_fifo1 test_fifo2

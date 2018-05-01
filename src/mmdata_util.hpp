@@ -79,7 +79,8 @@ namespace mmdata
                 }
                 else
                 {
-                    table = mdata.LoadRootWriteObject<RootTable>(options.dst_buf, options.dst_buf_size);
+                	mdata.OpenWrite(options.dst_buf, options.dst_buf_size);
+                    table = mdata.LoadRootWriteObject<RootTable>();
                     alloc = &(mdata.GetAllocator());
                 }
                 std::string line;

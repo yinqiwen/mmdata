@@ -197,7 +197,6 @@ namespace mmdata
             {
                 if (NULL == meta_)
                 {
-                    printf("###NULL META\n");
                     return NULL;
                 }
                 SHMString key(str.data(), str.size(), allocator_);
