@@ -37,47 +37,15 @@
 
 namespace mmdata
 {
-    class MMData;
-    typedef void SHMItemDestructor(MMData&, void*);
-    typedef void* SHMItemConstructor(MMData&);
 
-    template<typename T>
-    struct SHMDataDestructor
-    {
-            static void Free(MMData& mdata, void* p);
-    };
-
-    struct TypeRefItem
-    {
-            VoidPtr val;
-            SHMString type;
-            uint32_t ref;
-            SHMItemDestructor* destroy;
-            TypeRefItem(CharAllocator& alloc, uint32_t c = 0)
-                    : type(alloc), ref(c), destroy(NULL)
-            {
-                if (0 == ref)
-                {
-                    ref = 1;
-                }
-            }
-            template<typename T>
-            T* Get()
-            {
-                return (T*) (val.get());
-            }
-            uint32_t DecRef()
-            {
-                if (0 == ref)
-                {
-                    return 0;
-                }
-                ref--;
-                return ref;
-            }
-    };
-    typedef boost::interprocess::offset_ptr<TypeRefItem> TypeRefItemPtr;
-
+//    template<typename T>
+//    void* MMDataTypeCreator(const CharAllocator& alloc)
+//    {
+//        if (NULL != obj)
+//        {
+//            delete obj;
+//        }
+//    }
     class MMData
     {
         protected:
@@ -86,8 +54,9 @@ namespace mmdata
             std::string err;
 
             template<typename T>
-            T* LoadRootObject()
+            T* LoadRootObject(const void* buf)
             {
+                meta_ = (Meta*)buf;
                 //Meta* meta = (Meta*) buf;
                 return (T*) (meta_->root_object);
             }
@@ -96,25 +65,9 @@ namespace mmdata
                 //Meta* meta = (Meta*) allocator_.get_space().space.get();
                 return (NamingTable*) (meta_->naming_table);
             }
-            int CreateMeta(void* buf, int64_t memsize, bool create_allocator,bool reinit);
         public:
             MMData();
-            int OpenWrite(void* buf, int64_t size, bool create_allocator= true, bool reinit = true)
-            {
-                if (NULL == meta_ && 0 != CreateMeta(buf, size, create_allocator,reinit))
-                {
-                    return -1;
-                }
-                return 0;
-            }
-            int OpenRead(const void* buf)
-            {
-                if (NULL == meta_)
-                {
-                    meta_ = (Meta*) buf;
-                }
-                return 0;
-            }
+            int CreateAllocator(void* buf, int64_t memsize);
             const std::string& GetLastErr() const
             {
                 return err;
@@ -123,45 +76,12 @@ namespace mmdata
             {
                 return allocator_;
             }
-
-            TypeRefItemPtr NewTypeRefItem(const std::string& type, SHMItemConstructor* cons, SHMItemDestructor* destroy,
-                    uint32_t ref = 1);
-            template<typename T>
-            TypeRefItemPtr NewTypeRefItem(const std::string& type, uint32_t ref = 1)
-            {
-                TypeRefItemPtr ptr = New<TypeRefItem>();
-                ptr->destroy = SHMDataDestructor<T>::Free;
-                ptr->val = New<T>();
-                ptr->ref = ref;
-                ptr->type.assign(type.c_str(), type.size());
-                return ptr;
-            }
-            template<typename T, typename Arg>
-            TypeRefItemPtr NewTypeRefItemWithArg(const std::string& type, const Arg& arg, uint32_t ref = 1)
-            {
-                TypeRefItemPtr ptr = New<TypeRefItem>();
-                ptr->destroy = SHMDataDestructor<T>::Free;
-                ptr->val = New<T, Arg>(arg);
-                ptr->ref = ref;
-                ptr->type.assign(type.c_str(), type.size());
-                return ptr;
-            }
-            void Delete(TypeRefItemPtr p);
-
             template<typename T>
             T* New()
             {
                 Allocator<T> alloc(allocator_);
                 T* v = alloc.allocate(1);
                 ::new ((void*) (v)) T(allocator_);
-                return v;
-            }
-            template<typename T, typename Arg>
-            T* New(const Arg& arg)
-            {
-                Allocator<T> alloc(allocator_);
-                T* v = alloc.allocate(1);
-                ::new ((void*) (v)) T(arg);
                 return v;
             }
             template<typename T>
@@ -175,15 +95,14 @@ namespace mmdata
             template<typename T>
             T* NewNamingObject(const std::string& str)
             {
-                if (NULL == meta_)
+                if(NULL == meta_)
                 {
                     return NULL;
                 }
                 SHMString key(str.data(), str.size(), allocator_);
                 VoidPtr nil;
-                std::pair<NamingTable::iterator, bool> ret = GetNamingTable()->insert(
-                        NamingTable::value_type(key, nil));
-                if (!ret.second)
+                std::pair<NamingTable::iterator, bool> ret = GetNamingTable()->insert(NamingTable::value_type(key, nil));
+                if(!ret.second)
                 {
                     //duplicate
                     return NULL;
@@ -193,73 +112,52 @@ namespace mmdata
                 return v;
             }
             template<typename T>
-            T* GetNamingObject(const std::string& str, bool create_ifnotexist = false)
+            T* GetNamingObject(const std::string& str)
             {
-                if (NULL == meta_)
+                if(NULL == meta_)
                 {
                     return NULL;
                 }
                 SHMString key(str.data(), str.size(), allocator_);
                 NamingTable::const_iterator found = GetNamingTable()->find(key);
-                if (found != GetNamingTable()->end())
-                {
-                    return (T*) (found->second.get());
-                }
-                if (!create_ifnotexist)
+                if(found == GetNamingTable()->end())
                 {
                     return NULL;
                 }
-                return NewNamingObject<T>(str);
-
+                return (T*)(found->second.get());
             }
             template<typename T>
             bool DeleteNamingObject(const std::string& str, T* p)
             {
                 SHMString key(str.data(), str.size(), allocator_);
-                NamingTable* namings = GetNamingTable();
-                NamingTable::iterator found = namings->find(key);
-                if (found == GetNamingTable()->end())
+                const NamingTable* namings = GetNamingTable();
+                NamingTable::const_iterator found = namings->find(key);
+                if(found == GetNamingTable()->end())
                 {
                     return false;
                 }
-                namings->erase(found);
+                GetNamingTable()->erase(found);
                 Delete<T>(p);
                 return true;
             }
 
             template<typename T>
-            T* LoadRootWriteObject()
+            T* LoadRootWriteObject(void* buf, int64_t size)
             {
-                if (NULL == meta_)
+                if (0 != CreateAllocator(buf, size))
                 {
                     return NULL;
                 }
-                T* root = LoadRootObject<T>();
+                T* root = LoadRootObject<T>(buf);
                 ::new ((void*) (root)) T(allocator_);
                 return root;
             }
 
             template<typename T>
-            const T* LoadRootReadObject()
+            const T* LoadRootReadObject(const void* mem)
             {
-                if (NULL == meta_)
-                {
-                    return NULL;
-                }
-                return (const T*) LoadRootObject<T>();
+                return (const T*) LoadRootObject<T>(mem);
             }
-            template<typename T>
-            T* GetRootWriteObject()
-            {
-                return (T*) (meta_->root_object);
-            }
-
-            template<typename T>
-            const T* GetRootReadObject(const void* mem)
-            {
-                return (const T*) (meta_->root_object);
-            }
-
     };
 
     class MMFileData: public MMData
@@ -279,7 +177,7 @@ namespace mmdata
             {
                 if (databuf_.buf != NULL)
                 {
-                    return LoadRootObject<T>();
+                    return LoadRootObject<T>(databuf_.buf);
                 }
                 if (file_size_ <= 0)
                 {
@@ -292,19 +190,14 @@ namespace mmdata
                     return NULL;
                 }
                 readonly_ = false;
-                int ret = OpenWrite(databuf_.buf, databuf_.size);
-                if (0 != ret)
-                {
-                    return NULL;
-                }
-                return MMData::LoadRootWriteObject<T>();
+                return MMData::LoadRootWriteObject<T>(databuf_.buf, databuf_.size);
             }
             template<typename T>
             const T* LoadRootReadObject()
             {
                 if (databuf_.buf != NULL)
                 {
-                    return MMData::LoadRootReadObject<T>();
+                    return MMData::LoadRootReadObject<T>(databuf_.buf);
                 }
                 if (databuf_.OpenRead(file_) < 0)
                 {
@@ -312,98 +205,55 @@ namespace mmdata
                     return NULL;
                 }
                 readonly_ = true;
-                int ret = OpenRead(databuf_.buf);
-                if (0 != ret)
-                {
-                    return NULL;
-                }
-                return MMData::LoadRootReadObject<T>();
+                return MMData::LoadRootReadObject<T>(databuf_.buf);
             }
             int64_t ShrinkToFit();
     };
 
-    struct ShmOpenOptions
-    {
-            int64_t size;
-            bool recreate;
-            bool readonly;
-            bool reinit;
-            ShmOpenOptions():size(0),recreate(false),readonly(false),reinit(true)
-            {
-            }
-    };
 
-    class ShmData: public MMData
-    {
-        private:
-            int shmid;
-            void* shm_buf;
-            std::string error_reason;
-            bool dettach;
-        public:
-            ShmData(bool auto_dettach = true);
-            const std::string& LastError() const
-            {
-                return error_reason;
-            }
-            int GetId() const
-            {
-                return shmid;
-            }
-            int OpenShm(const std::string& f, const ShmOpenOptions& options);
-            ~ShmData();
-    };
-    class HeapMMData: public MMData
-    {
-        private:
-            char meta_buf[sizeof(Meta)];
-        public:
-            HeapMMData();
-            int OpenWrite();
-            int OpenRead();
-
-            ~HeapMMData();
-    };
-
-    template<typename T>
-    void SHMDataDestructor<T>::Free(MMData& mdata, void* p)
-    {
-        mdata.Delete((T*) p);
-    }
 
     template<typename T>
     std::ostream& operator<<(std::ostream& out, const typename boost::container::vector<T, mmdata::Allocator<T> >& v)
     {
         out << '[';
-        if (!v.empty())
+        typename boost::container::vector<T, mmdata::Allocator<T> >::const_iterator it = v.begin();
+        while(it != v.end())
         {
-            std::copy(v.begin(), v.end(), std::ostream_iterator<T>(out, ", "));
+            if (it != v.begin())
+            {
+                out << ", ";
+            }
+            out << *it;
+            it++;
         }
         out << "]";
         return out;
     }
 
     template<typename K, typename V>
-    std::ostream& operator<<(std::ostream& out,
-            const boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
+    std::ostream& operator<<(std::ostream& out, const boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
     {
         out << '{';
-        typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it =
-                v.begin();
-        while (it != v.end())
+        typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it = v.begin();
+        while(it != v.end())
         {
-            out << it->first << "->" << it->second << ",";
+            if (it != v.begin())
+            {
+                out << ", ";
+            }
+            out << it->first << "->" << it->second;
             it++;
         }
         out << "}";
         return out;
     }
+
     template<typename K, typename V>
     std::ostream& operator<<(std::ostream& out,
-            const boost::container::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
+            const boost::interprocess::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
     {
         out << '{';
-        typename boost::container::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it =
+        typename boost::interprocess::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it =
                 v.begin();
         while (it != v.end())
         {

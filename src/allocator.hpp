@@ -73,14 +73,9 @@ namespace mmdata
     };
     struct MemorySpaceInfo
     {
-            //boost::interprocess::offset_ptr<void> space;
-    	    void* space;
-            MemorySpaceInfo():space(NULL)
+            boost::interprocess::offset_ptr<void> space;
+            MemorySpaceInfo()
             {
-            }
-            void* GetSpace() const
-            {
-            	return space;
             }
     };
 
@@ -136,7 +131,7 @@ namespace mmdata
             //!Never throws
             Allocator(const Allocator &other)
             {
-                if (other.m_space.GetSpace() != NULL)
+                if (other.m_space.space.get() != NULL)
                 {
                     m_space = other.m_space;
                 }
@@ -147,14 +142,14 @@ namespace mmdata
             template<class T2>
             Allocator(const Allocator<T2> &other)
             {
-                if (other.get_space().GetSpace() != NULL)
+                if (other.get_space().space.get() != NULL)
                 {
                     m_space = other.get_space();
                 }
             }
             Allocator& operator=(const Allocator& other)
             {
-                if (other.m_space.GetSpace() != NULL)
+                if (other.m_space.space.get() != NULL)
                 {
                     m_space = other.m_space;
                 }
@@ -167,7 +162,7 @@ namespace mmdata
             {
                 (void) hint;
                 void* p = NULL;
-                Meta* meta = (Meta*) (m_space.GetSpace());
+                Meta* meta = (Meta*) (m_space.space.get());
                 if (NULL == meta)
                 {
                     return (T*) malloc(count * sizeof(T));
@@ -185,7 +180,7 @@ namespace mmdata
             void* realloc(void* oldmem, size_t bytes)
             {
                 void* p = NULL;
-                Meta* meta = (Meta*) (m_space.GetSpace());
+                Meta* meta = (Meta*) (m_space.space.get());
                 if (NULL == meta)
                 {
                     return realloc(oldmem, bytes);
@@ -205,7 +200,7 @@ namespace mmdata
             {
                 if (NULL == ptr) return;
                 T* p = (T*) ptr;
-                Meta* meta = (Meta*) (m_space.GetSpace());
+                Meta* meta = (Meta*) (m_space.space.get());
                 if (NULL == meta)
                 {
                     free(p);
@@ -222,7 +217,7 @@ namespace mmdata
             //!Never throws
             size_type max_size() const
             {
-                Meta* meta = (Meta*) (m_space.GetSpace());
+                Meta* meta = (Meta*) (m_space.space.get());
                 if (NULL == meta)
                 {
                     return UINT32_MAX;
@@ -242,7 +237,7 @@ namespace mmdata
             //!allocate, allocation_command and allocate_many.
             size_type size(const pointer &p) const
             {
-                Meta* meta = (Meta*) (m_space.GetSpace());
+                Meta* meta = (Meta*) (m_space.space.get());
                 if (NULL == meta)
                 {
                     return UINT32_MAX;
@@ -263,6 +258,15 @@ namespace mmdata
             {
                 return &value;
             }
+
+            //!Constructs an object
+            //!Throws if T's constructor throws
+            //!For backwards compatibility with libraries using C++03 allocators
+//            template<class P>
+//            void construct(const pointer &ptr, BOOST_FWD_REF(P) p)
+//            {
+//                ::new ((void*) (ptr.get())) T(::boost::forward<P>(p));
+//            }
 
             void construct(const pointer &ptr, const_reference val)
             {
@@ -285,13 +289,13 @@ namespace mmdata
 
             void* get_mspace() const
             {
-                Meta* meta = (Meta*) (m_space.GetSpace());
+                Meta* meta = (Meta*) (m_space.space.get());
                 return (char*) (meta) + meta->mspace_offset;
             }
 
             size_t used_space() const
             {
-                Meta* meta = (Meta*) (m_space.GetSpace());
+                Meta* meta = (Meta*) (m_space.space.get());
                 void* top = mspace_top_address(get_mspace());
                 return (char*) top - (char*) meta;
             }

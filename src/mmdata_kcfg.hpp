@@ -35,7 +35,110 @@
 
 namespace kcfg
 {
+    template<typename T>
+    struct SHMConstructor
+    {
+            T value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(alloc)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<float>
+    {
+            float value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<double>
+    {
+            double value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
 
+    template<>
+    struct SHMConstructor<int8_t>
+    {
+            int8_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<uint8_t>
+    {
+            uint8_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<int16_t>
+    {
+            int16_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<uint16_t>
+    {
+            uint16_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<uint32_t>
+    {
+            uint32_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<int32_t>
+    {
+            int32_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<int64_t>
+    {
+            int64_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+    template<>
+    struct SHMConstructor<uint64_t>
+    {
+            uint64_t value;
+            SHMConstructor(const mmdata::CharAllocator& alloc)
+                    : value(0)
+            {
+            }
+    };
+
+    /*
+     * the
+     */
     const rapidjson::Value* getJsonFiledValue(const rapidjson::Value& json, const char* name);
     void addJsonMember(rapidjson::Value& json, rapidjson::Value::AllocatorType& allocator, const char* name,
             rapidjson::Value& json_value);
@@ -44,7 +147,8 @@ namespace kcfg
     inline bool Parse(const rapidjson::Value& json, const char* name, T& v);
 
     template<typename K, typename V>
-    inline bool Parse(const rapidjson::Value& json, const char* name, boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
+    inline bool Parse(const rapidjson::Value& json, const char* name,
+            boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
     {
         typedef boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > > LocalMapType;
         const rapidjson::Value* val = getJsonFiledValue(json, name);
@@ -56,11 +160,12 @@ namespace kcfg
         {
             return false;
         }
+        v.reserve(val->MemberCount());
         rapidjson::Value::ConstMemberIterator it = val->MemberBegin();
         while (it != val->MemberEnd())
         {
-            mmdata::SHMConstructor<V> value(v.get_allocator());
-            mmdata::SHMConstructor<K> key(v.get_allocator());
+            SHMConstructor<V> value(v.get_allocator());
+            SHMConstructor<K> key(v.get_allocator());
             try
             {
                 key.value = boost::lexical_cast<K>(it->name.GetString(), it->name.GetStringLength());
@@ -102,9 +207,45 @@ namespace kcfg
 
     template<typename V>
     inline bool Parse(const rapidjson::Value& json, const char* name,
-            boost::unordered_map<mmdata::SHMString, V, boost::hash<mmdata::SHMString>, std::equal_to<mmdata::SHMString>, mmdata::Allocator<std::pair<const mmdata::SHMString, V> > >& v)
+            boost::unordered_map<mmdata::SHMString, V, boost::hash<mmdata::SHMString>, std::equal_to<mmdata::SHMString>,
+                    mmdata::Allocator<std::pair<const mmdata::SHMString, V> > >& v)
     {
         typedef typename mmdata::SHMHashMap<mmdata::SHMString, V>::Type LocalMapType;
+        const rapidjson::Value* val = getJsonFiledValue(json, name);
+        if (NULL == val)
+        {
+            return false;
+        }
+        if (!val->IsObject())
+        {
+            return false;
+        }
+        v.reserve(val->MemberCount());
+        rapidjson::Value::ConstMemberIterator it = val->MemberBegin();
+        while (it != val->MemberEnd())
+        {
+            SHMConstructor<V> value(v.get_allocator());
+            mmdata::SHMString key(v.get_allocator());
+            key.assign(it->name.GetString(), it->name.GetStringLength());
+            if (Parse(it->value, "", value.value))
+            {
+                v.insert(typename LocalMapType::value_type(key, value.value));
+            }
+            else
+            {
+                v.clear();
+                return false;
+            }
+            it++;
+        }
+        return true;
+    }
+
+    template<typename K, typename V>
+    inline bool Parse(const rapidjson::Value& json, const char* name,
+            boost::container::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
+    {
+        typedef typename boost::container::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > > LocalMapType;
         const rapidjson::Value* val = getJsonFiledValue(json, name);
         if (NULL == val)
         {
@@ -117,12 +258,19 @@ namespace kcfg
         rapidjson::Value::ConstMemberIterator it = val->MemberBegin();
         while (it != val->MemberEnd())
         {
-            mmdata::SHMConstructor<V> value(v.get_allocator());
-            mmdata::SHMString key(v.get_allocator());
-            key.assign(it->name.GetString(), it->name.GetStringLength());
+            SHMConstructor<K> key(v.get_allocator());
+            try
+            {
+                key.value = boost::lexical_cast<K>(it->name.GetString(), it->name.GetStringLength());
+            }
+            catch (boost::bad_lexical_cast& e)
+            {
+                return false;
+            }
+            SHMConstructor<V> value(v.get_allocator());
             if (Parse(it->value, "", value.value))
             {
-                v.insert(typename LocalMapType::value_type(key, value.value));
+                v.insert(typename LocalMapType::value_type(key.value, value.value));
             }
             else
             {
@@ -147,9 +295,10 @@ namespace kcfg
         {
             return false;
         }
+        v.reserve(val->Size());
         for (rapidjson::Value::ConstValueIterator ait = val->Begin(); ait != val->End(); ++ait)
         {
-            mmdata::SHMConstructor<T> value(v.get_allocator());
+            SHMConstructor<T> value(v.get_allocator());
             if (Parse(*ait, "", value.value))
             {
                 v.push_back(value.value);
@@ -160,6 +309,7 @@ namespace kcfg
                 return false;
             }
         }
+        v.shrink_to_fit();
         return true;
     }
 
@@ -175,9 +325,11 @@ namespace kcfg
 
     template<typename V>
     inline void Serialize(rapidjson::Value& json, rapidjson::Value::AllocatorType& allocator, const char* name,
-            const boost::unordered_map<mmdata::SHMString, V, boost::hash<mmdata::SHMString>, std::equal_to<mmdata::SHMString>, mmdata::Allocator<std::pair<const mmdata::SHMString, V> > >& v)
+            const boost::unordered_map<mmdata::SHMString, V, boost::hash<mmdata::SHMString>,
+                    std::equal_to<mmdata::SHMString>, mmdata::Allocator<std::pair<const mmdata::SHMString, V> > >& v)
     {
-        typedef boost::unordered_map<mmdata::SHMString, V, boost::hash<mmdata::SHMString>, std::equal_to<mmdata::SHMString>, mmdata::Allocator<std::pair<const mmdata::SHMString, V> > >  LocalMapType;
+        typedef boost::unordered_map<mmdata::SHMString, V, boost::hash<mmdata::SHMString>,
+                std::equal_to<mmdata::SHMString>, mmdata::Allocator<std::pair<const mmdata::SHMString, V> > > LocalMapType;
         rapidjson::Value json_value(rapidjson::kObjectType);
         typename LocalMapType::const_iterator it = v.begin();
         while (it != v.end())
@@ -191,10 +343,37 @@ namespace kcfg
 
     template<typename K, typename V>
     inline void Serialize(rapidjson::Value& json, rapidjson::Value::AllocatorType& allocator, const char* name,
+            const boost::container::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
+    {
+        typedef boost::container::map<K, V, std::less<K>, mmdata::Allocator<std::pair<const K, V> > > LocalMapType;
+        rapidjson::Value json_value(rapidjson::kObjectType);
+        typename LocalMapType::const_iterator it = v.begin();
+        while (it != v.end())
+        {
+            const K& kk = it->first;
+            std::string json_key;
+            try
+            {
+                json_key = boost::lexical_cast<std::string, K>(kk);
+            }
+            catch (boost::bad_lexical_cast& e)
+            {
+                return;
+            }
+            const V& vv = it->second;
+            Serialize(json_value, allocator, json_key.c_str(), vv);
+            it++;
+        }
+        addJsonMember(json, allocator, name, json_value);
+    }
+
+    template<typename K, typename V>
+    inline void Serialize(rapidjson::Value& json, rapidjson::Value::AllocatorType& allocator, const char* name,
             const boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >& v)
     {
         rapidjson::Value json_value(rapidjson::kObjectType);
-        typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it = v.begin();
+        typename boost::unordered_map<K, V, boost::hash<K>, std::equal_to<K>, mmdata::Allocator<std::pair<const K, V> > >::const_iterator it =
+                v.begin();
         while (it != v.end())
         {
             const K& kk = it->first;
@@ -225,7 +404,6 @@ namespace kcfg
         }
         addJsonMember(json, allocator, name, json_value);
     }
-
 }
 
 #endif /* KCFG_HPP_ */

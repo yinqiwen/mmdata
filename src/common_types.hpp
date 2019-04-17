@@ -64,19 +64,19 @@ namespace mmdata
             typedef boost::interprocess::list<T, Allocator<T> > Type;
     };
 
-    template<typename T, typename Less = std::less<T> >
+    template<typename T, typename Less= std::less<T> >
     struct SHMSet
     {
             typedef boost::interprocess::set<T, Less, Allocator<T> > Type;
     };
 
-    template<typename KeyType, typename MappedType, typename Hash = boost::hash<KeyType>,
-            typename Equal = std::equal_to<KeyType> >
+    template<typename KeyType, typename MappedType, typename Hash = boost::hash<KeyType>, typename Equal = std::equal_to<KeyType> >
     struct SHMHashMap
     {
             typedef std::pair<const KeyType, MappedType> ValueType;
             typedef Allocator<ValueType> ShmemAllocator;
-            typedef boost::unordered_map<KeyType, MappedType, Hash, Equal, ShmemAllocator> Type;
+            typedef boost::unordered_map<KeyType, MappedType, Hash, Equal,
+                    ShmemAllocator> Type;
     };
 
     template<typename KeyType, typename MappedType, typename Less = std::less<KeyType> >
@@ -94,108 +94,6 @@ namespace mmdata
     };
 
     typedef SHMHashMap<SHMString, VoidPtr>::Type NamingTable;
-
-    template<typename T>
-    struct SHMConstructor
-    {
-            T value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(alloc)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<float>
-    {
-            float value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<double>
-    {
-            double value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-
-    template<>
-    struct SHMConstructor<int8_t>
-    {
-            int8_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint8_t>
-    {
-            uint8_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<int16_t>
-    {
-            int16_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint16_t>
-    {
-            uint16_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint32_t>
-    {
-            uint32_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<int32_t>
-    {
-            int32_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<int64_t>
-    {
-            int64_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-    template<>
-    struct SHMConstructor<uint64_t>
-    {
-            uint64_t value;
-            SHMConstructor(const mmdata::CharAllocator& alloc)
-                    : value(0)
-            {
-            }
-    };
-
 }
 
 #endif /* SRC_COMMON_TYPES_HPP_ */

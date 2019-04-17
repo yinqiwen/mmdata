@@ -30,8 +30,8 @@
 #ifndef SRC_MMDATA_UTIL_HPP_
 #define SRC_MMDATA_UTIL_HPP_
 
-#include "kcfg.hpp"
 #include "mmdata_kcfg.hpp"
+#include "kcfg.hpp"
 #include "mmdata.hpp"
 #include <fstream>
 
@@ -79,8 +79,7 @@ namespace mmdata
                 }
                 else
                 {
-                	mdata.OpenWrite(options.dst_buf, options.dst_buf_size);
-                    table = mdata.LoadRootWriteObject<RootTable>();
+                    table = mdata.LoadRootWriteObject<RootTable>(options.dst_buf, options.dst_buf_size);
                     alloc = &(mdata.GetAllocator());
                 }
                 std::string line;
@@ -93,7 +92,7 @@ namespace mmdata
                     T entry(*alloc);
                     if (kcfg::ParseFromJsonString(line, entry))
                     {
-                        table->insert(typename RootTable::value_type(entry.GetKey(), entry.GetValue()));
+                        table->Insert(entry);
                     }
                 }
                 if (!options.dst_file.empty())

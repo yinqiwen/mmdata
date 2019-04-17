@@ -89,7 +89,7 @@ namespace mmdata
 //                close(fd);
 //                return -1;
 //            }
-            if (file_st.st_size != size)
+            if ((uint64_t)file_st.st_size != size)
             {
                 if (-1 == ftruncate(fd, size))
                 {
